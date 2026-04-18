@@ -21,6 +21,21 @@ variables:
   - group: Arthur_VG # Contains service_conn and subscription_id
 
 stages:
+
+  - stage: ProvisionRG
+    displayName: 'Setup Environment'
+    jobs:
+      - job: CreateRG
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Ensure Resource Group Exists'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az group create --name ${{ parameters.RESOURCE_GROUP }} --location ${{ parameters.location }}
+
   - stage: Lint
     displayName: 'Lint Bicep'
     jobs:
