@@ -1,0 +1,49 @@
+trigger: none
+
+parameters:
+  - name: RESOURCE_GROUP
+    type: string
+    default: 'projArthurReis'
+  - name: location
+    type: string
+    default: 'brazilsouth'
+
+variables:
+  - group: Arthur_VG  # Contains service_conn
+  - group: HouseRent  # The group from your screenshot
+
+stages:
+  - stage: Provision
+    jobs:
+      - job: AssignRBAC
+        steps:
+          # Ensure RG exists before assigning roles
+          - task: AzureCLI@2
+            displayName: 'Ensure Resource Group & Assign RBAC'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # 1. Ensure the Resource Group exists
+                az group create --name ${{ parameters.RESOURCE_GROUP }} --location ${{ parameters.location }}
+
+                # 2. Dynamically build the JSON array from the HouseRent Variable Group
+                # This script looks for environment variables that look like GUIDs
+                ASSIGNMENTS_JSON=$(python3 -c "
+                import os, json, re
+                assignments = []
+                guid_pattern = re.compile(r'^([a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12})$')
+                for name, value in os.environ.items():
+                    if guid_pattern.match(name):
+                        assignments.append({'principalId': name, 'roleName': value})
+                print(json.dumps(assignments))
+                ")
+
+                echo "Computed Assignments: $ASSIGNMENTS_JSON"
+
+                # 3. Deploy the Bicep file with the dynamic array
+                az deployment group create \
+                  --resource-group ${{ parameters.RESOURCE_GROUP }} \
+                  --template-file bicep_files/rbac_assignments.bicep \
+                  --parameters assignments=\"$ASSIGNMENTS_JSON\"
