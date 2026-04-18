@@ -15,7 +15,7 @@ parameters:
     default: 'dev'
   - name: templateML
     type: string
-    default: 'infra/bicep_files/azure_ml_deploy.bicep'
+    default: 'bicep_files/azure_ml_deploy.bicep'
 
 variables:
   - group: Arthur_VG # Contains service_conn and subscription_id
