@@ -1,0 +1,8 @@
+# MLTable definition file
+
+paths:
+  - file: ./House_Rent_Dataset.csv
+transformations:
+  - read_delimited:
+        delimiter: ','
+        encoding: 'ascii'

@@ -1,0 +1,109 @@
+trigger: none
+
+parameters:
+  - name: location
+    type: string
+    default: 'brazilsouth'
+  - name: RESOURCE_GROUP
+    type: string
+    default: 'projArthurReis'
+  - name: personName
+    type: string
+    default: 'Arthur'
+  - name: environment
+    type: string
+    default: 'dev'
+  - name: templateML
+    type: string
+    default: 'bicep_files/azure_ml_deploy.bicep'
+
+variables:
+  - group: Arthur_VG # Contains service_conn and subscription_id
+
+stages:
+  - stage: Lint
+    displayName: 'Lint Bicep'
+    jobs:
+      - job: LintBicep
+        steps:
+          - script: az bicep build --file ${{ parameters.templateML }}
+            displayName: 'Bicep Lint'
+
+  - stage: Validate
+    displayName: 'Validate Deployment'
+    jobs:
+      - job: ValidateBicep
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group validate \
+                  --resource-group ${{ parameters.RESOURCE_GROUP }} \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='${{ parameters.environment }}' \
+                               location='${{ parameters.location }}'
+
+  - stage: WhatIf
+    displayName: 'What-If Preview'
+    jobs:
+      - job: WhatIfJob
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group ${{ parameters.RESOURCE_GROUP }} \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='${{ parameters.environment }}' \
+                               location='${{ parameters.location }}'
+
+  - stage: Deploy
+    displayName: 'Deploy Resources'
+    jobs:
+      - job: DeployResources
+        steps:
+          - task: AzureCLI@2
+            name: 'bicepDeployment'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                WORKSPACE_NAME=$(az deployment group create \
+                  --resource-group ${{ parameters.RESOURCE_GROUP }} \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='${{ parameters.environment }}' \
+                               location='${{ parameters.location }}' \
+                  --query properties.outputs.mlWorkspaceName.value -o tsv)
+                
+                mkdir -p $(Pipeline.Workspace)/outputs
+                echo $WORKSPACE_NAME > $(Pipeline.Workspace)/outputs/workspace_name.txt
+
+          - publish: $(Pipeline.Workspace)/outputs
+            artifact: bicep_outputs
+
+  - stage: SmokeTest
+    dependsOn: Deploy
+    jobs:
+      - job: SmokeTestJob
+        steps:
+          - download: current
+            artifact: bicep_outputs
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                WORKSPACE_NAME=$(cat $(Pipeline.Workspace)/bicep_outputs/workspace_name.txt)
+                echo "Testing Workspace: $WORKSPACE_NAME"
+                az ml workspace show --name "$WORKSPACE_NAME" --resource-group "${{ parameters.RESOURCE_GROUP }}"

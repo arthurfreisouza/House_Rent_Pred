@@ -1,0 +1,2 @@
+Create a MLTable :
+    - az ml data create --type mltable --name "house-rent-dataset" --path data/
