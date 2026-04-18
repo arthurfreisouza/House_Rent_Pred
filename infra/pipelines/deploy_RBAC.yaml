@@ -28,27 +28,28 @@ stages:
                 # 1. Ensure the Resource Group exists
                 az group create --name ${{ parameters.RESOURCE_GROUP }} --location ${{ parameters.location }}
 
-                # 2. Extract and de-mangle GUIDs from the HouseRent Variable Group
-                # This script finds variables like _63A928CD_F93D_... and turns them back into valid GUIDs
+                # 2. Extract GUIDs using a more flexible detection script
                 ASSIGNMENTS_JSON=$(python3 -c "
                 import os, json, re
                 assignments = []
-                # Look for the mangled Azure DevOps pattern: _ followed by 8 chars, underscore, 4 chars...
-                pattern = re.compile(r'^_([A-F0-9]{8})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{12})$')
+                # Matches GUIDs with or without a leading underscore, using hyphens or underscores
+                pattern = re.compile(r'_?([A-F0-9]{8})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{12})')
+                valid_roles = ['Owner', 'Contributor', 'Reader', 'AcrPull']
                 
                 for env_name, role in os.environ.items():
-                    match = pattern.match(env_name)
-                    if match:
-                        # Reconstruct the original GUID format: 8-4-4-4-12
-                        guid = '-'.join(match.groups()).lower()
-                        assignments.append({'principalId': guid, 'roleName': role})
+                    if role in valid_roles:
+                        match = pattern.search(env_name)
+                        if match:
+                            # Convert back to standard hyphenated GUID format
+                            guid = '-'.join(match.groups()).lower()
+                            assignments.append({'principalId': guid, 'roleName': role})
                 
                 print(json.dumps(assignments))
                 ")
 
                 echo "Final JSON for Bicep: $ASSIGNMENTS_JSON"
 
-                # 3. Deploy Bicep (Note: we removed the escaped quotes around $ASSIGNMENTS_JSON)
+                # 3. Deploy Bicep
                 az deployment group create \
                   --resource-group ${{ parameters.RESOURCE_GROUP }} \
                   --template-file infra/bicep_files/rbac_assignments.bicep \
