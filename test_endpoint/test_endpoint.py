@@ -2,7 +2,7 @@ import requests
 import json
 
 # The URL you provided
-url = "https://houserent-predictor.westeurope.inference.ml.azure.com/score"
+url = ""
 
 # Replace this with your actual key from the 'Consume' tab
 api_key = ""
