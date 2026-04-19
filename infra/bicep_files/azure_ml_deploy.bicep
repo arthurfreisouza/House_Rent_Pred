@@ -55,7 +55,7 @@ param environment string
       supportsHttpsTrafficOnly: true
       minimumTlsVersion: 'TLS1_2'
       allowBlobPublicAccess: false
-      networkAcls: { defaultAction: 'Deny' }
+      networkAcls: { defaultAction: 'Allow' }
     }
   }
   
