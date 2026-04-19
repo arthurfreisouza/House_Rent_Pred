@@ -1,2 +1,17 @@
-Create a MLTable :
-    - az ml data create --type mltable --name "house-rent-dataset" --path data/
+
+
+1- Once you have access to the workspace, create a compute instance:
+az ml compute create --name MLendpointexp \
+                     --size STANDARD_DS11_V2 \
+                     --type ComputeInstance \
+                     --resource-group ai300proj \
+                     --workspace-name mlw-ai300devArthurRReis
+
+2- Once you have access to the workspace, create a compute cluster:
+az ml compute create --name "$COMPUTE_CLUSTER" --size STANDARD_DS11_V2 --max-instances 2 --type AmlCompute
+
+
+# Create data assets (paths relative to infra/)
+echo "Create training data asset:"
+az ml data create --type mltable --name "diabetes-training" --path ../data/diabetes-data 
+az ml data create --type uri_file --name "diabetes-data" --path ../data/diabetes-data/diabetes.csv

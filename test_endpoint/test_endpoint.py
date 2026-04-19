@@ -5,7 +5,7 @@ import json
 url = "https://houserent-predictor.westeurope.inference.ml.azure.com/score"
 
 # Replace this with your actual key from the 'Consume' tab
-api_key = "FQF4IvOLADGKs9csbuh3pjGAQkaUh3phQ53Ul0K8JDbuCo1pJxjPJQQJ99CDAAAAAAAAAAAAINFRAZML1YvU"
+api_key = ""
 
 headers = {
     'Content-Type': 'application/json',
