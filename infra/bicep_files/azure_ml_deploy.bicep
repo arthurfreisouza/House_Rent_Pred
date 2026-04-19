@@ -97,4 +97,7 @@ param environment string
     }
   }
   
-  output mlWorkspaceName string = workspace.name
+
+
+// Add this to the end of azure_ml_deploy.bicep
+output mlWorkspaceName string = workspace.name
