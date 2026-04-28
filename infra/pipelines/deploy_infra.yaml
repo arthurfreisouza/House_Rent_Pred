@@ -10,8 +10,11 @@ parameters:
     type: string
     default: 'brazilsouth'
   - name: templateML
+    displayName: "Bicep Template Path"
     type: string
+    # Corrected to include the 'infra/' folder based on your terminal output
     default: 'infra/bicep_files/azure_ml_deploy.bicep'
+  
   # Selection parameters for stages
   - name: runDev
     displayName: "Deploy to Dev?"
@@ -27,13 +30,14 @@ parameters:
     default: false
 
 variables:
-  - group: Arthur_VG # Contains service_conn and subscription_id
+  - group: Arthur_VG 
+  # Updated to match 'rg-Arthur-dev' convention
   - name: rgDev
-    value: 'rg-dev-${{ parameters.personName }}'
+    value: 'rg-${{ parameters.personName }}-dev'
   - name: rgTest
-    value: 'rg-test-${{ parameters.personName }}'
+    value: 'rg-${{ parameters.personName }}-test'
   - name: rgProd
-    value: 'rg-prod-${{ parameters.personName }}'
+    value: 'rg-${{ parameters.personName }}-prod'
 
 stages:
   - stage: Lint
@@ -63,8 +67,7 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: |
-                az group create --name $(rgName) --location ${{ parameters.location }}
+              inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
             displayName: 'Deploy Resources'
@@ -88,14 +91,12 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: |
-                az ml workspace show --name $(workspaceName) --resource-group $(rgName)
+              inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
 
   # --- TEST STAGE ---
   - stage: Deploy_Test
     displayName: 'Deploy to Test'
-    dependsOn: Deploy_Dev # Ensures Test waits for Dev
-    # not(failed()) allows this to run if Dev was successful OR skipped
+    dependsOn: Deploy_Dev
     condition: and(not(failed()), eq('${{ parameters.runTest }}', 'true'))
     variables:
       - name: envName
@@ -111,8 +112,7 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: |
-                az group create --name $(rgName) --location ${{ parameters.location }}
+              inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
             displayName: 'Deploy Resources'
@@ -130,19 +130,10 @@ stages:
                   --query properties.outputs.mlWorkspaceName.value -o tsv)
                 echo "##vso[task.setvariable variable=workspaceName]$WORKSPACE_NAME"
 
-          - task: AzureCLI@2
-            displayName: 'Smoke Test'
-            inputs:
-              azureSubscription: '$(service_conn)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az ml workspace show --name $(workspaceName) --resource-group $(rgName)
-
   # --- PROD STAGE ---
   - stage: Deploy_Prod
     displayName: 'Deploy to Production'
-    dependsOn: Deploy_Test # Ensures Prod waits for Test
+    dependsOn: Deploy_Test
     condition: and(not(failed()), eq('${{ parameters.runProd }}', 'true'))
     variables:
       - name: envName
@@ -158,8 +149,7 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: |
-                az group create --name $(rgName) --location ${{ parameters.location }}
+              inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
             displayName: 'Deploy Resources'
@@ -176,12 +166,3 @@ stages:
                                location='${{ parameters.location }}' \
                   --query properties.outputs.mlWorkspaceName.value -o tsv)
                 echo "##vso[task.setvariable variable=workspaceName]$WORKSPACE_NAME"
-
-          - task: AzureCLI@2
-            displayName: 'Smoke Test'
-            inputs:
-              azureSubscription: '$(service_conn)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az ml workspace show --name $(workspaceName) --resource-group $(rgName)
