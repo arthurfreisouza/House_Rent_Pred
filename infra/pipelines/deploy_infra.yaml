@@ -4,14 +4,14 @@ parameters:
   - name: personName
     displayName: "Person/Owner Name"
     type: string
-    default: 'Arthur'
+    [cite_start]default: 'Arthur' # [cite: 2]
   - name: location
     displayName: "Azure Region"
     type: string
-    default: 'brazilsouth'
+    [cite_start]default: 'brazilsouth' # [cite: 2]
   - name: templateML
     type: string
-    default: 'bicep_files/azure_ml_deploy.bicep'
+    [cite_start]default: 'bicep_files/azure_ml_deploy.bicep' # [cite: 2]
   # Selection parameters for stages
   - name: runDev
     displayName: "Deploy to Dev?"
@@ -27,7 +27,7 @@ parameters:
     default: false
 
 variables:
-  - group: Arthur_VG # Contains service_conn and subscription_id
+  - [cite_start]group: Arthur_VG # Contains service_conn and subscription_id [cite: 2]
   - name: rgDev
     value: 'rg-dev-${{ parameters.personName }}'
   - name: rgTest
@@ -48,6 +48,7 @@ stages:
   - stage: Deploy_Dev
     displayName: 'Deploy to Development'
     dependsOn: Lint
+    # Only run if runDev is true AND Lint succeeded
     condition: and(succeeded(), eq(${{ parameters.runDev }}, true))
     variables:
       envName: 'dev'
@@ -60,6 +61,7 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
@@ -67,6 +69,7 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: |
                 WORKSPACE_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
@@ -82,13 +85,15 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
 
   # --- TEST STAGE ---
   - stage: Deploy_Test
     displayName: 'Deploy to Test'
-    dependsOn: Lint
-    condition: and(succeeded(), eq(${{ parameters.runTest }}, true))
+    dependsOn: Deploy_Dev # Sequential dependency
+    # Run if runTest is true AND previous stages didn't fail (even if they were skipped)
+    condition: and(not(failed()), eq(${{ parameters.runTest }}, true))
     variables:
       envName: 'test'
       rgName: $(rgTest)
@@ -100,6 +105,7 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
@@ -107,6 +113,7 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: |
                 WORKSPACE_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
@@ -122,13 +129,14 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
 
   # --- PROD STAGE ---
   - stage: Deploy_Prod
     displayName: 'Deploy to Production'
-    dependsOn: Lint
-    condition: and(succeeded(), eq(${{ parameters.runProd }}, true))
+    dependsOn: Deploy_Test # Sequential dependency
+    condition: and(not(failed()), eq(${{ parameters.runProd }}, true))
     variables:
       envName: 'prod'
       rgName: $(rgProd)
@@ -140,6 +148,7 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
@@ -147,6 +156,7 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: |
                 WORKSPACE_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
@@ -162,4 +172,5 @@ stages:
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
