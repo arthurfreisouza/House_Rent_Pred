@@ -12,7 +12,6 @@ parameters:
   - name: templateML
     displayName: "Bicep Template Path"
     type: string
-    # Corrected to include the 'infra/' folder based on your terminal output
     default: 'infra/bicep_files/azure_ml_deploy.bicep'
   
   # Selection parameters for stages
@@ -31,7 +30,7 @@ parameters:
 
 variables:
   - group: Arthur_VG 
-  # Updated to match 'rg-Arthur-dev' convention
+  # Consistent naming convention: rg-Arthur-dev
   - name: rgDev
     value: 'rg-${{ parameters.personName }}-dev'
   - name: rgTest
@@ -60,9 +59,10 @@ stages:
         value: $(rgDev)
     jobs:
       - job: DeployJob
+        displayName: 'Validation and Deployment'
         steps:
           - task: AzureCLI@2
-            displayName: 'Ensure Resource Group Exists'
+            displayName: '1. Ensure Resource Group Exists'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
@@ -70,7 +70,35 @@ stages:
               inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
-            displayName: 'Deploy Resources'
+            displayName: '2. Validate Bicep Deployment'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group validate \
+                  --resource-group $(rgName) \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='$(envName)' \
+                               location='${{ parameters.location }}'
+
+          - task: AzureCLI@2
+            displayName: '3. What-If Preview'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(rgName) \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='$(envName)' \
+                               location='${{ parameters.location }}'
+
+          - task: AzureCLI@2
+            displayName: '4. Execute Deployment'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
@@ -86,7 +114,7 @@ stages:
                 echo "##vso[task.setvariable variable=workspaceName]$WORKSPACE_NAME"
 
           - task: AzureCLI@2
-            displayName: 'Smoke Test'
+            displayName: '5. Smoke Test'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
@@ -105,9 +133,10 @@ stages:
         value: $(rgTest)
     jobs:
       - job: DeployJob
+        displayName: 'Validation and Deployment'
         steps:
           - task: AzureCLI@2
-            displayName: 'Ensure Resource Group Exists'
+            displayName: '1. Ensure Resource Group Exists'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
@@ -115,7 +144,35 @@ stages:
               inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
-            displayName: 'Deploy Resources'
+            displayName: '2. Validate Bicep Deployment'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group validate \
+                  --resource-group $(rgName) \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='$(envName)' \
+                               location='${{ parameters.location }}'
+
+          - task: AzureCLI@2
+            displayName: '3. What-If Preview'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(rgName) \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='$(envName)' \
+                               location='${{ parameters.location }}'
+
+          - task: AzureCLI@2
+            displayName: '4. Execute Deployment'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
@@ -142,9 +199,10 @@ stages:
         value: $(rgProd)
     jobs:
       - job: DeployJob
+        displayName: 'Validation and Deployment'
         steps:
           - task: AzureCLI@2
-            displayName: 'Ensure Resource Group Exists'
+            displayName: '1. Ensure Resource Group Exists'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
@@ -152,7 +210,35 @@ stages:
               inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
-            displayName: 'Deploy Resources'
+            displayName: '2. Validate Bicep Deployment'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group validate \
+                  --resource-group $(rgName) \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='$(envName)' \
+                               location='${{ parameters.location }}'
+
+          - task: AzureCLI@2
+            displayName: '3. What-If Preview'
+            inputs:
+              azureSubscription: '$(service_conn)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(rgName) \
+                  --template-file ${{ parameters.templateML }} \
+                  --parameters personName='${{ parameters.personName }}' \
+                               environment='$(envName)' \
+                               location='${{ parameters.location }}'
+
+          - task: AzureCLI@2
+            displayName: '4. Execute Deployment'
             inputs:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
