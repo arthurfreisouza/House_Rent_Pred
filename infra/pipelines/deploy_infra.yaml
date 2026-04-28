@@ -4,14 +4,14 @@ parameters:
   - name: personName
     displayName: "Person/Owner Name"
     type: string
-    [cite_start]default: 'Arthur' # [cite: 2]
+    default: 'Arthur'
   - name: location
     displayName: "Azure Region"
     type: string
-    [cite_start]default: 'brazilsouth' # [cite: 2]
+    default: 'brazilsouth'
   - name: templateML
     type: string
-    [cite_start]default: 'bicep_files/azure_ml_deploy.bicep' # [cite: 2]
+    default: 'infra/bicep_files/azure_ml_deploy.bicep'
   # Selection parameters for stages
   - name: runDev
     displayName: "Deploy to Dev?"
@@ -27,7 +27,7 @@ parameters:
     default: false
 
 variables:
-  - [cite_start]group: Arthur_VG # Contains service_conn and subscription_id [cite: 2]
+  - group: Arthur_VG # Contains service_conn and subscription_id
   - name: rgDev
     value: 'rg-dev-${{ parameters.personName }}'
   - name: rgTest
@@ -48,11 +48,12 @@ stages:
   - stage: Deploy_Dev
     displayName: 'Deploy to Development'
     dependsOn: Lint
-    # Only run if runDev is true AND Lint succeeded
-    condition: and(succeeded(), eq(${{ parameters.runDev }}, true))
+    condition: and(succeeded(), eq('${{ parameters.runDev }}', 'true'))
     variables:
-      envName: 'dev'
-      rgName: $(rgDev)
+      - name: envName
+        value: 'dev'
+      - name: rgName
+        value: $(rgDev)
     jobs:
       - job: DeployJob
         steps:
@@ -62,7 +63,8 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
+              inlineScript: |
+                az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
             displayName: 'Deploy Resources'
@@ -86,17 +88,20 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
+              inlineScript: |
+                az ml workspace show --name $(workspaceName) --resource-group $(rgName)
 
   # --- TEST STAGE ---
   - stage: Deploy_Test
     displayName: 'Deploy to Test'
-    dependsOn: Deploy_Dev # Sequential dependency
-    # Run if runTest is true AND previous stages didn't fail (even if they were skipped)
-    condition: and(not(failed()), eq(${{ parameters.runTest }}, true))
+    dependsOn: Deploy_Dev # Ensures Test waits for Dev
+    # not(failed()) allows this to run if Dev was successful OR skipped
+    condition: and(not(failed()), eq('${{ parameters.runTest }}', 'true'))
     variables:
-      envName: 'test'
-      rgName: $(rgTest)
+      - name: envName
+        value: 'test'
+      - name: rgName
+        value: $(rgTest)
     jobs:
       - job: DeployJob
         steps:
@@ -106,7 +111,8 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
+              inlineScript: |
+                az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
             displayName: 'Deploy Resources'
@@ -130,16 +136,19 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
+              inlineScript: |
+                az ml workspace show --name $(workspaceName) --resource-group $(rgName)
 
   # --- PROD STAGE ---
   - stage: Deploy_Prod
     displayName: 'Deploy to Production'
-    dependsOn: Deploy_Test # Sequential dependency
-    condition: and(not(failed()), eq(${{ parameters.runProd }}, true))
+    dependsOn: Deploy_Test # Ensures Prod waits for Test
+    condition: and(not(failed()), eq('${{ parameters.runProd }}', 'true'))
     variables:
-      envName: 'prod'
-      rgName: $(rgProd)
+      - name: envName
+        value: 'prod'
+      - name: rgName
+        value: $(rgProd)
     jobs:
       - job: DeployJob
         steps:
@@ -149,7 +158,8 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az group create --name $(rgName) --location ${{ parameters.location }}
+              inlineScript: |
+                az group create --name $(rgName) --location ${{ parameters.location }}
 
           - task: AzureCLI@2
             displayName: 'Deploy Resources'
@@ -173,4 +183,5 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
+              inlineScript: |
+                az ml workspace show --name $(workspaceName) --resource-group $(rgName)
