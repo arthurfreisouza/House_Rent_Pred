@@ -7,10 +7,13 @@ parameters:
   - name: location
     type: string
     default: 'brazilsouth'
+  - name: VARIABLE_GROUP_NAME
+    type: string
+    default: 'HouseRent'
 
 variables:
   - group: Arthur_VG  # Contains service_conn
-  - group: HouseRent  # The group from your screenshot
+  - group: ${{ parameters.VARIABLE_GROUP_NAME }}
 
 stages:
   - stage: Provision
@@ -33,7 +36,7 @@ stages:
                 import os, json, re
                 assignments = []
                 # Matches GUIDs with or without a leading underscore, using hyphens or underscores
-                pattern = re.compile(r'_?([A-F0-9]{8})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{12})')
+                pattern = re.compile(r'_?([A-F0-9]{8})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{4})_([A-F0-9]{12})', re.IGNORECASE)
                 valid_roles = ['Owner', 'Contributor', 'Reader', 'AcrPull']
                 
                 for env_name, role in os.environ.items():
