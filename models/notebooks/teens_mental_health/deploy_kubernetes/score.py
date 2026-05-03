@@ -6,7 +6,7 @@ import numpy as np
 def init():
     global model
     # AZUREML_MODEL_DIR is an environment variable created by Azure pointing to your model
-    model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "random_forest_model.pkl")
+    model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "randomforest", "random_forest_model.pkl")
     model = joblib.load(model_path)
 
 def run(raw_data):
