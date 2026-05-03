@@ -1,70 +1,62 @@
-import os
 import sys
+import os
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import (
-    ManagedOnlineEndpoint, ManagedOnlineDeployment, 
-    Model, Environment, CodeConfiguration
+    KubernetesOnlineEndpoint, KubernetesOnlineDeployment
 )
 from azure.identity import DefaultAzureCredential
-from azure.ai.ml.constants import AssetTypes
 
-model_name = sys.argv[1]
-credential = DefaultAzureCredential()
+# Map keys to your specific Resource Groups
+ENV_CONFIG = {
+    "dev": "rg-ArthurRReis-dev",
+    "prod": "rg-ArthurRReis-prod"
+}
 
-# 1. Connect to DEV and Download Model[cite: 17]
-dev_client = MLClient(
-    credential, os.getenv("AZURE_SUBSCRIPTION_ID"), 
-    os.getenv("DEV_RESOURCE_GROUP"), os.getenv("DEV_WORKSPACE_NAME")
-)
+def promote(model_name, dev_key, prod_key):
+    credential = DefaultAzureCredential()
+    sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
+    workspace = os.getenv("AZURE_WORKSPACE_NAME")
 
-print(f"Downloading model {model_name} from DEV...")
-dev_model = dev_client.models.get(name=model_name, label="latest")
-dev_client.models.download(name=model_name, version=dev_model.version, download_path="./artifacts")
+    # Guard clause to prevent the ValueError you saw
+    if not workspace or not sub_id:
+        raise ValueError("Missing environment variables: AZURE_WORKSPACE_NAME or AZURE_SUBSCRIPTION_ID")
 
-# 2. Connect to PROD[cite: 13]
-prod_client = MLClient(
-    credential, os.getenv("AZURE_SUBSCRIPTION_ID"), 
-    os.getenv("AZURE_RESOURCE_GROUP"), os.getenv("AZURE_WORKSPACE_NAME")
-)
+    # 1. Connect to both Resource Groups
+    dev_client = MLClient(credential, sub_id, ENV_CONFIG[dev_key], workspace)
+    prod_client = MLClient(credential, sub_id, ENV_CONFIG[prod_key], workspace)
 
-# 3. Register in PROD[cite: 17]
-print(f"Registering {model_name} in PROD...")
-prod_model_config = Model(
-    path=f"./artifacts/{model_name}/random_forest_model.pkl",
-    type=AssetTypes.CUSTOM_MODEL,
-    name=model_name,
-    description="Promoted from DEV via PR comment."
-)
-registered_model = prod_client.models.create_or_update(prod_model_config)
+    print(f"Fetching model {model_name} from {dev_key}...")
+    dev_model = dev_client.models.get(name=model_name, label="latest")
+    
+    # 2. Get existing Dev Deployment info to mirror it
+    endpoint_name = "k8s-mental-health-api"
+    dev_deployment = dev_client.online_deployments.get("blue", endpoint_name)
 
-# 4. Define PROD Environment using the subfolder path
-prod_env = Environment(
-    name="teens-mental-health-prod-env",
-    conda_file="deploy_web_endpoint/conda.yaml", # Path to your subfolder
-    image="mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest",
-)
+    # 3. Register and Deploy to Prod
+    print(f"Promoting to {prod_key}...")
+    prod_client.models.create_or_update(dev_model)
 
-# 5. Deploy to Endpoint in PROD[cite: 13, 15]
-endpoint_name = "mental-health-prod-endpoint"
-endpoint = ManagedOnlineEndpoint(name=endpoint_name, auth_mode="key")
-prod_client.begin_create_or_update(endpoint).result()
+    endpoint = KubernetesOnlineEndpoint(
+        name=endpoint_name, 
+        compute="arthurkubernetes", 
+        auth_mode="key"
+    )
+    
+    deployment = KubernetesOnlineDeployment(
+        name="blue",
+        endpoint_name=endpoint_name,
+        model=dev_model,
+        code_configuration=dev_deployment.code_configuration,
+        environment=dev_deployment.environment,
+        resources=dev_deployment.resources
+    )
 
-deployment = ManagedOnlineDeployment(
-    name="prod-v1",
-    endpoint_name=endpoint_name,
-    model=registered_model,
-    code_configuration=CodeConfiguration(
-        code="deploy_web_endpoint/", # Points to the folder containing score.py
-        scoring_script="score.py"
-    ),
-    environment=prod_env,
-    instance_type="Standard_DS3_v2",
-    instance_count=1,
-)
+    prod_client.online_endpoints.begin_create_or_update(endpoint).result()
+    prod_client.online_deployments.begin_create_or_update(deployment).result()
+    
+    endpoint.traffic = {"blue": 100}
+    prod_client.online_endpoints.begin_create_or_update(endpoint).result()
+    print("Promotion Complete!")
 
-print("Deploying to PROD endpoint...")
-prod_client.online_deployments.begin_create_or_update(deployment).result()
-endpoint.traffic = {"prod-v1": 100}
-prod_client.begin_create_or_update(endpoint).result()
-
-print(f"PROD Deployment Successful: {endpoint.scoring_uri}")
+if __name__ == "__main__":
+    promote(sys.argv[1], sys.argv[2], sys.argv[3])

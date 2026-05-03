@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install ML SDK
+      - name: Install Dependencies
         run: pip install azure-ai-ml azure-identity
 
       - name: Azure Login
@@ -24,10 +24,11 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Promote Model
+      - name: Promote and Deploy
         env:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
-          AZURE_WORKSPACE_NAME: "mlw-ArthurRReis-dev" # Assumes name is same in both RGs
+          # FIX: Move these into the execution step
+          AZURE_WORKSPACE_NAME: "mlw-ArthurRReis-dev" 
         run: |
           MODEL_NAME=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
           DEV_ENV=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
