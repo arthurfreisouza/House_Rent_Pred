@@ -1,0 +1,60 @@
+import os
+import sys
+from azure.ai.ml import MLClient
+from azure.ai.ml.entities import (
+    ManagedOnlineEndpoint, ManagedOnlineDeployment, 
+    Model, Environment, CodeConfiguration
+)
+from azure.identity import DefaultAzureCredential
+from azure.ai.ml.constants import AssetTypes
+
+model_name = sys.argv[1]
+credential = DefaultAzureCredential()
+
+# 1. Connect to DEV and Download Model[cite: 17]
+dev_client = MLClient(
+    credential, os.getenv("AZURE_SUBSCRIPTION_ID"), 
+    os.getenv("DEV_RESOURCE_GROUP"), os.getenv("DEV_WORKSPACE_NAME")
+)
+
+print(f"Downloading model {model_name} from DEV...")
+dev_model = dev_client.models.get(name=model_name, label="latest")
+dev_client.models.download(name=model_name, version=dev_model.version, download_path="./artifacts")
+
+# 2. Connect to PROD
+prod_client = MLClient(
+    credential, os.getenv("AZURE_SUBSCRIPTION_ID"), 
+    os.getenv("AZURE_RESOURCE_GROUP"), os.getenv("AZURE_WORKSPACE_NAME")
+)
+
+# 3. Register in PROD[cite: 17]
+print(f"Registering {model_name} in PROD...")
+prod_model_config = Model(
+    path=f"./artifacts/{model_name}/random_forest_model.pkl",
+    type=AssetTypes.CUSTOM_MODEL,
+    name=model_name,
+    description="Promoted from DEV via PR comment."
+)
+registered_model = prod_client.models.create_or_update(prod_model_config)
+
+# 4. Deploy to Endpoint in PROD
+endpoint_name = "mental-health-prod-endpoint"
+endpoint = ManagedOnlineEndpoint(name=endpoint_name, auth_mode="key")
+prod_client.begin_create_or_update(endpoint).result()
+
+deployment = ManagedOnlineDeployment(
+    name="prod-v1",
+    endpoint_name=endpoint_name,
+    model=registered_model,
+    code_configuration=CodeConfiguration(code="./", scoring_script="score.py"),
+    environment="AzureML-sklearn-1.0-ubuntu20.04-py38-cpu:1", # Or your custom_env[cite: 13]
+    instance_type="Standard_DS3_v2",
+    instance_count=1,
+)
+
+print("Deploying to PROD endpoint...")
+prod_client.online_deployments.begin_create_or_update(deployment).result()
+endpoint.traffic = {"prod-v1": 100}
+prod_client.begin_create_or_update(endpoint).result()
+
+print(f"PROD Deployment Successful: {endpoint.scoring_uri}")

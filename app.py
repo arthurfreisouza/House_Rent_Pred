@@ -12,6 +12,9 @@ st.markdown("---")
 #API_KEY = "YOUR_PRIMARY_KEY_HERE"
 # URL = "https://price-prediction-04192134.brazilsouth.inference.ml.azure.com/score"
 
+API_KEY = "8OeOEvPZLBfG1Op8N9LMhDHXkb3TFUL8nS4hc1njFh73Wa4wV2zWJQQJ99CDAAAAAAAAAAAAINFRAZML2ZqG"
+URL = "https://price-prediction-04192134.brazilsouth.inference.ml.azure.com/score"
+
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Property Details")
 area = st.sidebar.number_input("Area (sq ft)", value=1360, step=10)

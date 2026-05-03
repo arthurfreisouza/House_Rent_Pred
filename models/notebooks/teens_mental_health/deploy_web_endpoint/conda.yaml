@@ -1,0 +1,11 @@
+name: model-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy>=2.0.0
+  - scikit-learn>=1.5.1  # Note: 1.8.0 is very new; ensure this matches your local 'pip show scikit-learn'
+  - pip:
+    - azureml-inference-server-http
+    - joblib
+    - pandas
