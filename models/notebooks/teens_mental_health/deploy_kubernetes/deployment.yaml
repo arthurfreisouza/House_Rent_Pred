@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/kubernetesOnlineDeployment.
 name: blue
 endpoint_name: k8s-mental-health-api  # Fixed: Match the endpoint name created above
 type: kubernetes
-model: azureml:randomforest@latest
+model: azureml:randomforestmodel@latest
 code_configuration:
   code: ./
   scoring_script: score.py

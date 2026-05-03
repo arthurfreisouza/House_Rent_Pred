@@ -3,7 +3,7 @@ import json
 import os
 from dotenv import load_dotenv
 # URL from the 'Details' tab in your screenshot
-url = "http://20.54.32.244/api/v1/endpoint/k8s-mental-health-api/score"
+url = "http://20.54.32.244/api/v1/endpoint/k8s-mental-health-api-prod/score"
 
 def environment_primary_key():
     load_dotenv()
