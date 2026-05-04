@@ -12,9 +12,9 @@ parameters:
   - name: templateML
     displayName: "Bicep Template Path"
     type: string
-    default: 'infra_AI_Foundry/bicep_files/azure_aifoundry_deploy.bicep'
+    default: 'infra/bicep_files/azure_ai_foundry.bicep' # Point to your new Hub template[cite: 1]
   
-  # Selection parameters for stages
+  # Selection parameters for stages[cite: 1]
   - name: runDev
     displayName: "Deploy to Dev?"
     type: boolean
@@ -30,7 +30,7 @@ parameters:
 
 variables:
   - group: Arthur_VG 
-  # Consistent naming convention: rg-Arthur-dev
+  # Consistent naming convention[cite: 1]
   - name: rgDev
     value: 'rg-${{ parameters.personName }}-dev'
   - name: rgTest
@@ -104,14 +104,15 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                WORKSPACE_NAME=$(az deployment group create \
+                # UPDATED: Querying aiHubName instead of mlWorkspaceName
+                HUB_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
                   --template-file ${{ parameters.templateML }} \
                   --parameters personName='${{ parameters.personName }}' \
                                environment='$(envName)' \
                                location='${{ parameters.location }}' \
-                  --query properties.outputs.mlWorkspaceName.value -o tsv)
-                echo "##vso[task.setvariable variable=workspaceName]$WORKSPACE_NAME"
+                  --query properties.outputs.aiHubName.value -o tsv)
+                echo "##vso[task.setvariable variable=workspaceName]$HUB_NAME"
 
           - task: AzureCLI@2
             displayName: '5. Smoke Test'
@@ -178,14 +179,15 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                WORKSPACE_NAME=$(az deployment group create \
+                # UPDATED: Querying aiHubName[cite: 2, 3]
+                HUB_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
                   --template-file ${{ parameters.templateML }} \
                   --parameters personName='${{ parameters.personName }}' \
                                environment='$(envName)' \
                                location='${{ parameters.location }}' \
-                  --query properties.outputs.mlWorkspaceName.value -o tsv)
-                echo "##vso[task.setvariable variable=workspaceName]$WORKSPACE_NAME"
+                  --query properties.outputs.aiHubName.value -o tsv)
+                echo "##vso[task.setvariable variable=workspaceName]$HUB_NAME"
 
   # --- PROD STAGE ---
   - stage: Deploy_Prod
@@ -244,11 +246,12 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                WORKSPACE_NAME=$(az deployment group create \
+                # UPDATED: Querying aiHubName[cite: 2, 3]
+                HUB_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
                   --template-file ${{ parameters.templateML }} \
                   --parameters personName='${{ parameters.personName }}' \
                                environment='$(envName)' \
                                location='${{ parameters.location }}' \
-                  --query properties.outputs.mlWorkspaceName.value -o tsv)
-                echo "##vso[task.setvariable variable=workspaceName]$WORKSPACE_NAME"
+                  --query properties.outputs.aiHubName.value -o tsv)
+                echo "##vso[task.setvariable variable=workspaceName]$HUB_NAME"
