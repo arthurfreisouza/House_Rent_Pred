@@ -12,7 +12,7 @@ parameters:
   - name: templateML
     displayName: "Bicep Template Path"
     type: string
-    default: 'infra/bicep_files/azure_ai_foundry.bicep' # Point to your new Hub template[cite: 1]
+    default: 'infra_AI_Foundry/bicep_files/azure_aifoundry_deploy.bicep' # Modern Foundry resource (CognitiveServices/accounts kind=AIServices + projects)
   
   # Selection parameters for stages[cite: 1]
   - name: runDev
@@ -104,15 +104,15 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                # UPDATED: Querying aiHubName instead of mlWorkspaceName
-                HUB_NAME=$(az deployment group create \
+                # Querying foundryAccountName from the modern Foundry resource
+                FOUNDRY_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
                   --template-file ${{ parameters.templateML }} \
                   --parameters personName='${{ parameters.personName }}' \
                                environment='$(envName)' \
                                location='${{ parameters.location }}' \
-                  --query properties.outputs.aiHubName.value -o tsv)
-                echo "##vso[task.setvariable variable=workspaceName]$HUB_NAME"
+                  --query properties.outputs.foundryAccountName.value -o tsv)
+                echo "##vso[task.setvariable variable=foundryAccountName]$FOUNDRY_NAME"
 
           - task: AzureCLI@2
             displayName: '5. Smoke Test'
@@ -120,7 +120,7 @@ stages:
               azureSubscription: '$(service_conn)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              inlineScript: az ml workspace show --name $(workspaceName) --resource-group $(rgName)
+              inlineScript: az cognitiveservices account show --name $(foundryAccountName) --resource-group $(rgName)
 
   # --- TEST STAGE ---
   - stage: Deploy_Test
@@ -179,15 +179,15 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                # UPDATED: Querying aiHubName[cite: 2, 3]
-                HUB_NAME=$(az deployment group create \
+                # Querying foundryAccountName from the modern Foundry resource
+                FOUNDRY_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
                   --template-file ${{ parameters.templateML }} \
                   --parameters personName='${{ parameters.personName }}' \
                                environment='$(envName)' \
                                location='${{ parameters.location }}' \
-                  --query properties.outputs.aiHubName.value -o tsv)
-                echo "##vso[task.setvariable variable=workspaceName]$HUB_NAME"
+                  --query properties.outputs.foundryAccountName.value -o tsv)
+                echo "##vso[task.setvariable variable=foundryAccountName]$FOUNDRY_NAME"
 
   # --- PROD STAGE ---
   - stage: Deploy_Prod
@@ -246,12 +246,12 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                # UPDATED: Querying aiHubName[cite: 2, 3]
-                HUB_NAME=$(az deployment group create \
+                # Querying foundryAccountName from the modern Foundry resource
+                FOUNDRY_NAME=$(az deployment group create \
                   --resource-group $(rgName) \
                   --template-file ${{ parameters.templateML }} \
                   --parameters personName='${{ parameters.personName }}' \
                                environment='$(envName)' \
                                location='${{ parameters.location }}' \
-                  --query properties.outputs.aiHubName.value -o tsv)
-                echo "##vso[task.setvariable variable=workspaceName]$HUB_NAME"
+                  --query properties.outputs.foundryAccountName.value -o tsv)
+                echo "##vso[task.setvariable variable=foundryAccountName]$FOUNDRY_NAME"
