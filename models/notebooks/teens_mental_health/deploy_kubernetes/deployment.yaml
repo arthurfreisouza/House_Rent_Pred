@@ -1,0 +1,20 @@
+$schema: https://azuremlschemas.azureedge.net/latest/kubernetesOnlineDeployment.schema.json
+name: blue
+endpoint_name: k8s-mental-health-api  # Fixed: Match the endpoint name created above
+type: kubernetes
+model: azureml:randomforestmodel@latest
+code_configuration:
+  code: ./
+  scoring_script: score.py
+environment: 
+  name: teens-k8s-env
+  version: 1
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda.yaml
+resources:
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"

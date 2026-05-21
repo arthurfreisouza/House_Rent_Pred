@@ -1,8 +1,8 @@
 @description('The name of the person/owner for the naming convention.')
-param personName string
+param personName string 
 
 @description('Specifies the name of the environment (e.g., dev, prod).')
-param environment string
+param environment string 
 
 @description('Specifies the location of the resources.')
 @allowed([
@@ -29,10 +29,11 @@ param environment string
   ])
 param location string
 
-// Naming logic based on: ai300{environment}{person_name}
-var baseName = 'ai300${environment}${personName}'
+// Convention: {personName}-{environment}
+// This creates a consistent base for all resource names
+var baseName = '${personName}-${environment}'
 
-// Storage accounts: no hyphens, lowercase, max 24 chars
+// Azure Storage names must be alphanumeric and lowercase (max 24 chars) 
 var storageAccountName = toLower(take(replace('st${baseName}', '-', ''), 24))
 var keyVaultName = take('kv-${baseName}', 24)
 var applicationInsightsName = 'appi-${baseName}'
@@ -55,7 +56,9 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' = {
     supportsHttpsTrafficOnly: true
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
-    networkAcls: { defaultAction: 'Deny' }
+    networkAcls: { 
+      defaultAction: 'Allow' 
+    }
   }
 }
 
@@ -74,14 +77,18 @@ resource applicationInsight 'Microsoft.Insights/components@2020-02-02' = {
   name: applicationInsightsName
   location: location
   kind: 'web'
-  properties: { Application_Type: 'web' }
+  properties: { 
+    Application_Type: 'web' 
+  }
 }
 
 resource registry 'Microsoft.ContainerRegistry/registries@2022-02-01-preview' = {
   name: containerRegistryName
   location: location
   sku: { name: 'Standard' }
-  properties: { adminUserEnabled: false }
+  properties: { 
+    adminUserEnabled: false 
+  }
 }
 
 resource workspace 'Microsoft.MachineLearningServices/workspaces@2022-10-01' = {
@@ -97,5 +104,4 @@ resource workspace 'Microsoft.MachineLearningServices/workspaces@2022-10-01' = {
   }
 }
 
-// Added output to allow the pipeline to fetch the workspace name
 output mlWorkspaceName string = workspace.name

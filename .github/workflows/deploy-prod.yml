@@ -1,0 +1,37 @@
+name: Promote Model to Prod
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  deploy:
+    # Only run if it's a PR comment starting with /deploy-prod
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/deploy-prod')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install azure-ai-ml azure-identity
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Promote and Deploy
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
+        run: |
+          # Parse arguments from comment: /deploy-prod <model_name> <dev_env> <prod_env>
+          MODEL_NAME=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
+          DEV_ENV=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+          PROD_ENV=$(echo "${{ github.event.comment.body }}" | awk '{print $4}')
+          
+          python promote_to_prod.py $MODEL_NAME $DEV_ENV $PROD_ENV

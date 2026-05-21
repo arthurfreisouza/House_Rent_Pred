@@ -1,0 +1,5 @@
+$schema: https://azuremlschemas.azureedge.net/latest/kubernetesOnlineEndpoint.schema.json
+name: k8s-mental-health-apitest
+compute: azureml:arthurkubernetes
+auth_mode: key
+description: "Kubernetes endpoint for teen mental health predictions"
